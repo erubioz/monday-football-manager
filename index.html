@@ -527,7 +527,7 @@
             playerHistory.push(newPlayer);
             
             // Add to SheetDB
-            fetch(`${SHEETDB_API_URL}/sheet=PlayerHistory`, {
+            fetch(`${SHEETDB_API_URL}?sheet=PlayerHistory`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
@@ -550,7 +550,7 @@
             showLoader(true);
             try {
                 // Fetch player history
-                const historyResponse = await fetch(`${SHEETDB_API_URL}/sheet=PlayerHistory`);
+                const historyResponse = await fetch(`${SHEETDB_API_URL}?sheet=PlayerHistory`);
                 const historyData = await historyResponse.json();
                 playerHistory = historyData.map(player => ({
                     name: player.name,
@@ -620,7 +620,7 @@
         async function savePlayerHistory() {
             try {
                 // Delete all existing player history
-                await fetch(`${SHEETDB_API_URL}/sheet=PlayerHistory`, {
+                await fetch(`${SHEETDB_API_URL}?sheet=PlayerHistory`, {
                     method: 'DELETE',
                     headers: {
                         'Content-Type': 'application/json'
@@ -629,7 +629,7 @@
                 });
                 
                 // Add updated player history
-                await fetch(`${SHEETDB_API_URL}/sheet=PlayerHistory`, {
+                await fetch(`${SHEETDB_API_URL}?sheet=PlayerHistory`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
