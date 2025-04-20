@@ -1,0 +1,656 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Monday Football Manager</title>
+    <style>
+        :root {
+            --primary-color: #3498db;
+            --success-color: #2ecc71;
+            --warning-color: #f39c12;
+            --danger-color: #e74c3c;
+            --dark-color: #2c3e50;
+            --light-color: #ecf0f1;
+        }
+        
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            background-color: var(--light-color);
+            color: var(--dark-color);
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+        }
+        
+        h1, h2, h3 {
+            color: var(--dark-color);
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        
+        .card {
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .player-select-container {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        
+        select {
+            flex-grow: 1;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 16px;
+        }
+        
+        button {
+            padding: 10px 15px;
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s;
+        }
+        
+        button:hover {
+            background-color: #2980b9;
+        }
+        
+        button.success {
+            background-color: var(--success-color);
+        }
+        
+        button.success:hover {
+            background-color: #27ae60;
+        }
+        
+        button.warning {
+            background-color: var(--warning-color);
+        }
+        
+        button.warning:hover {
+            background-color: #e67e22;
+        }
+        
+        button.danger {
+            background-color: var(--danger-color);
+        }
+        
+        button.danger:hover {
+            background-color: #c0392b;
+        }
+        
+        .player-list {
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            margin-bottom: 20px;
+        }
+        
+        .player-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 15px;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .player-item:last-child {
+            border-bottom: none;
+        }
+        
+        .player-name {
+            font-weight: 500;
+        }
+        
+        .player-games {
+            color: #666;
+            font-size: 14px;
+        }
+        
+        .list-header {
+            background-color: #f8f9fa;
+            padding: 10px 15px;
+            font-weight: bold;
+            border-bottom: 2px solid #ddd;
+            display: flex;
+            justify-content: space-between;
+        }
+        
+        .admin-controls {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #ddd;
+        }
+        
+        .btn-container {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        
+        .stats {
+            display: flex;
+            justify-content: space-around;
+            margin: 20px 0;
+        }
+        
+        .stat-box {
+            text-align: center;
+        }
+        
+        .stat-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: var(--primary-color);
+        }
+        
+        .stat-label {
+            font-size: 14px;
+            color: #666;
+        }
+        
+        /* Loading spinner */
+        .loader {
+            border: 5px solid #f3f3f3;
+            border-top: 5px solid var(--primary-color);
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+            display: none;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .message {
+            padding: 10px;
+            border-radius: 4px;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+        
+        .message.success {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        
+        .message.error {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+        
+        @media (max-width: 600px) {
+            .container {
+                padding: 15px;
+            }
+            
+            .player-select-container {
+                flex-direction: column;
+            }
+            
+            .btn-container {
+                flex-direction: column;
+            }
+            
+            button {
+                width: 100%;
+                margin-bottom: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Monday Football Manager</h1>
+        
+        <div class="stats">
+            <div class="stat-box">
+                <div class="stat-value" id="playerCount">0</div>
+                <div class="stat-label">Players Registered</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-value" id="spotsLeft">15</div>
+                <div class="stat-label">Spots Left</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-value" id="nextGameDate">-</div>
+                <div class="stat-label">Next Game</div>
+            </div>
+        </div>
+        
+        <div class="message" id="message" style="display: none;"></div>
+        
+        <div class="card">
+            <h3>Register for Next Game</h3>
+            <div class="player-select-container">
+                <select id="playerSelect">
+                    <option value="">Select your name</option>
+                </select>
+                <button id="registerBtn">Register</button>
+            </div>
+        </div>
+
+        <div class="card">
+            <h3>Main Squad (15 Players)</h3>
+            <div class="player-list" id="mainSquad">
+                <div class="list-header">
+                    <span>Player Name</span>
+                    <span>Games Played</span>
+                </div>
+                <!-- Player items will be added here dynamically -->
+            </div>
+            
+            <h3>Substitutes</h3>
+            <div class="player-list" id="substitutes">
+                <div class="list-header">
+                    <span>Player Name</span>
+                    <span>Games Played</span>
+                </div>
+                <!-- Substitute items will be added here dynamically -->
+            </div>
+        </div>
+        
+        <div class="admin-controls">
+            <h3>Admin Controls</h3>
+            <div class="btn-container">
+                <button id="resetListBtn" class="warning">Reset Current List</button>
+                <button id="confirmAttendanceBtn" class="success">Confirm Attendance</button>
+                <button id="addNewPlayerBtn">Add New Player</button>
+            </div>
+        </div>
+        
+        <div class="loader" id="loader"></div>
+    </div>
+
+    <script>
+        // Configuration
+        const MAX_PLAYERS = 15;
+        const SHEETDB_API_URL = 'https://sheetdb.io/api/v1/p7013b2mit62h'; // Replace with your SheetDB API URL
+        
+        // Variables to store data
+        let playerHistory = [];
+        let currentList = [];
+        
+        // Helper Functions
+        function sortPlayersByGames(players) {
+            return [...players].sort((a, b) => b.gamesPlayed - a.gamesPlayed);
+        }
+        
+        function findPlayerByName(name) {
+            return playerHistory.find(player => player.name === name);
+        }
+        
+        function updatePlayerLists() {
+            // Sort the current list by games played
+            const sortedList = sortPlayersByGames(currentList);
+            
+            // Split into main squad and substitutes
+            const mainSquad = sortedList.slice(0, MAX_PLAYERS);
+            const substitutes = sortedList.slice(MAX_PLAYERS);
+            
+            // Update the UI
+            updatePlayerListUI('mainSquad', mainSquad);
+            updatePlayerListUI('substitutes', substitutes);
+            
+            // Update stats
+            document.getElementById('playerCount').textContent = currentList.length;
+            document.getElementById('spotsLeft').textContent = Math.max(0, MAX_PLAYERS - mainSquad.length);
+        }
+        
+        function updatePlayerListUI(elementId, players) {
+            const listElement = document.getElementById(elementId);
+            
+            // Keep the header
+            const header = listElement.querySelector('.list-header');
+            listElement.innerHTML = '';
+            listElement.appendChild(header);
+            
+            // Add players
+            players.forEach(player => {
+                const playerItem = document.createElement('div');
+                playerItem.className = 'player-item';
+                playerItem.innerHTML = `
+                    <span class="player-name">${player.name}</span>
+                    <span class="player-games">${player.gamesPlayed} games</span>
+                `;
+                listElement.appendChild(playerItem);
+            });
+            
+            // Add placeholder if empty
+            if (players.length === 0) {
+                const emptyItem = document.createElement('div');
+                emptyItem.className = 'player-item';
+                emptyItem.innerHTML = `
+                    <span class="player-name">No players yet</span>
+                    <span></span>
+                `;
+                listElement.appendChild(emptyItem);
+            }
+        }
+        
+        function updatePlayerDropdown() {
+            const dropdown = document.getElementById('playerSelect');
+            
+            // Clear existing options (except the first)
+            while (dropdown.options.length > 1) {
+                dropdown.remove(1);
+            }
+            
+            // Get list of players already registered for this week
+            const registeredNames = currentList.map(player => player.name);
+            
+            // Add all players except those already registered
+            playerHistory.forEach(player => {
+                if (!registeredNames.includes(player.name)) {
+                    const option = document.createElement('option');
+                    option.value = player.name;
+                    option.textContent = `${player.name} (${player.gamesPlayed} games)`;
+                    dropdown.appendChild(option);
+                }
+            });
+        }
+        
+        function showMessage(text, type = 'success') {
+            const messageElement = document.getElementById('message');
+            messageElement.textContent = text;
+            messageElement.className = `message ${type}`;
+            messageElement.style.display = 'block';
+            
+            // Hide after 5 seconds
+            setTimeout(() => {
+                messageElement.style.display = 'none';
+            }, 5000);
+        }
+        
+        function showLoader(show = true) {
+            document.getElementById('loader').style.display = show ? 'block' : 'none';
+        }
+        
+        // Initialize the app
+        function init() {
+            // Set next game date
+            const nextMonday = getNextMonday();
+            document.getElementById('nextGameDate').textContent = nextMonday.toLocaleDateString('en-US', { 
+                month: 'short', 
+                day: 'numeric' 
+            });
+            
+            // Set up event listeners
+            document.getElementById('registerBtn').addEventListener('click', registerPlayer);
+            document.getElementById('resetListBtn').addEventListener('click', resetCurrentList);
+            document.getElementById('confirmAttendanceBtn').addEventListener('click', confirmAttendance);
+            document.getElementById('addNewPlayerBtn').addEventListener('click', showAddNewPlayerDialog);
+            
+            // Fetch data from SheetDB
+            fetchData();
+        }
+        
+        function getNextMonday() {
+            const today = new Date();
+            const day = today.getDay(); // 0 = Sunday, 1 = Monday, etc.
+            const daysUntilMonday = day === 0 ? 1 : day === 1 ? 7 : 8 - day;
+            
+            const nextMonday = new Date(today);
+            nextMonday.setDate(today.getDate() + daysUntilMonday);
+            return nextMonday;
+        }
+        
+        // Event handlers
+        function registerPlayer() {
+            const dropdown = document.getElementById('playerSelect');
+            const selectedName = dropdown.value;
+            
+            if (!selectedName) {
+                showMessage('Please select a player', 'error');
+                return;
+            }
+            
+            // Check if player is already in the list
+            if (currentList.some(player => player.name === selectedName)) {
+                showMessage('This player is already registered', 'error');
+                return;
+            }
+            
+            // Add player to the current list
+            const player = findPlayerByName(selectedName);
+            currentList.push(player);
+            
+            // Update the UI
+            updatePlayerLists();
+            updatePlayerDropdown();
+            
+            // Reset dropdown selection
+            dropdown.value = '';
+            
+            showMessage(`${selectedName} has been added to the list`);
+            
+            // Save to SheetDB
+            saveCurrentList();
+        }
+        
+        function resetCurrentList() {
+            if (confirm('Are you sure you want to reset the current list? This cannot be undone.')) {
+                currentList = [];
+                updatePlayerLists();
+                updatePlayerDropdown();
+                showMessage('Player list has been reset');
+                
+                // Save empty list to SheetDB
+                saveCurrentList();
+            }
+        }
+        
+        function confirmAttendance() {
+            if (confirm('This will update player statistics based on the current list. Continue?')) {
+                showLoader(true);
+                
+                // Get the main squad (who actually played)
+                const sortedList = sortPlayersByGames(currentList);
+                const playersWhoAttended = sortedList.slice(0, MAX_PLAYERS);
+                
+                // Increment games played for each player who attended
+                playersWhoAttended.forEach(attendee => {
+                    const player = findPlayerByName(attendee.name);
+                    if (player) {
+                        player.gamesPlayed++;
+                    }
+                });
+                
+                // Reset current list
+                currentList = [];
+                
+                // Update the UI
+                updatePlayerLists();
+                updatePlayerDropdown();
+                
+                // Save updated player history to SheetDB
+                savePlayerHistory().then(() => {
+                    saveCurrentList().then(() => {
+                        showLoader(false);
+                        showMessage('Attendance confirmed and player stats updated');
+                    });
+                });
+            }
+        }
+        
+        function showAddNewPlayerDialog() {
+            const playerName = prompt('Enter new player name:');
+            
+            if (!playerName) return;
+            
+            if (playerName.trim() === '') {
+                showMessage('Player name cannot be empty', 'error');
+                return;
+            }
+            
+            // Check for duplicate names
+            if (findPlayerByName(playerName)) {
+                showMessage('This player already exists', 'error');
+                return;
+            }
+            
+            // Add new player with 0 games
+            const newPlayer = {
+                name: playerName,
+                gamesPlayed: 0
+            };
+            
+            playerHistory.push(newPlayer);
+            
+            // Add to SheetDB
+            fetch(`${SHEETDB_API_URL}/sheet=PlayerHistory`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ data: newPlayer })
+            })
+            .then(response => response.json())
+            .then(data => {
+                updatePlayerDropdown();
+                showMessage(`${playerName} has been added to the player database`);
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showMessage('Error adding new player', 'error');
+            });
+        }
+        
+        // SheetDB API functions
+        async function fetchData() {
+            showLoader(true);
+            try {
+                // Fetch player history
+                const historyResponse = await fetch(`${SHEETDB_API_URL}/sheet=PlayerHistory`);
+                const historyData = await historyResponse.json();
+                playerHistory = historyData.map(player => ({
+                    name: player.name,
+                    gamesPlayed: parseInt(player.gamesPlayed) || 0
+                }));
+                
+                // Fetch current week's list
+                const currentResponse = await fetch(`${SHEETDB_API_URL}/sheet=CurrentWeek`);
+                const currentData = await currentResponse.json();
+                
+                // Map player data from CurrentWeek sheet to include games played
+                currentList = currentData.map(entry => {
+                    const player = findPlayerByName(entry.name);
+                    return {
+                        name: entry.name,
+                        gamesPlayed: player ? player.gamesPlayed : 0
+                    };
+                }).filter(player => player.name); // Filter out empty entries
+                
+                // Update UI
+                updatePlayerLists();
+                updatePlayerDropdown();
+                
+                showLoader(false);
+                showMessage('Data loaded successfully');
+            } catch (error) {
+                console.error('Error fetching data:', error);
+                showLoader(false);
+                showMessage('Error loading data. Please refresh the page.', 'error');
+            }
+        }
+        
+        async function saveCurrentList() {
+            try {
+                // First delete all current entries
+                await fetch(`${SHEETDB_API_URL}/sheet=CurrentWeek`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ condition: { '!=': '' } }) // Delete all non-empty rows
+                });
+                
+                // Then add the current list
+                if (currentList.length > 0) {
+                    await fetch(`${SHEETDB_API_URL}/sheet=CurrentWeek`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ 
+                            data: currentList.map(player => ({ 
+                                name: player.name,
+                                gamesPlayed: player.gamesPlayed
+                            }))
+                        })
+                    });
+                }
+                return true;
+            } catch (error) {
+                console.error('Error saving current list:', error);
+                showMessage('Error saving data', 'error');
+                return false;
+            }
+        }
+        
+        async function savePlayerHistory() {
+            try {
+                // Delete all existing player history
+                await fetch(`${SHEETDB_API_URL}/sheet=PlayerHistory`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ condition: { '!=': '' } }) // Delete all non-empty rows
+                });
+                
+                // Add updated player history
+                await fetch(`${SHEETDB_API_URL}/sheet=PlayerHistory`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ 
+                        data: playerHistory.map(player => ({ 
+                            name: player.name,
+                            gamesPlayed: player.gamesPlayed
+                        }))
+                    })
+                });
+                return true;
+            } catch (error) {
+                console.error('Error saving player history:', error);
+                showMessage('Error saving player statistics', 'error');
+                return false;
+            }
+        }
+        
+        // Initialize the app when the DOM is loaded
+        document.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html>
