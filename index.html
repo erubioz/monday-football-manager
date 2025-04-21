@@ -558,7 +558,7 @@
                 }));
                 
                 // Fetch current week's list
-                const currentResponse = await fetch(`${SHEETDB_API_URL}/sheet=CurrentWeek`);
+                const currentResponse = await fetch(`${SHEETDB_API_URL}?sheet=CurrentWeek`);
                 const currentData = await currentResponse.json();
                 
                 // Map player data from CurrentWeek sheet to include games played
@@ -586,7 +586,7 @@
         async function saveCurrentList() {
             try {
                 // First delete all current entries
-                await fetch(`${SHEETDB_API_URL}/sheet=CurrentWeek`, {
+                await fetch(`${SHEETDB_API_URL}?sheet=CurrentWeek`, {
                     method: 'DELETE',
                     headers: {
                         'Content-Type': 'application/json'
@@ -596,7 +596,7 @@
                 
                 // Then add the current list
                 if (currentList.length > 0) {
-                    await fetch(`${SHEETDB_API_URL}/sheet=CurrentWeek`, {
+                    await fetch(`${SHEETDB_API_URL}?sheet=CurrentWeek`, {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json'
