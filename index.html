@@ -294,6 +294,8 @@
     <script>
         // Configuration
         const MAX_PLAYERS = 15;
+        const CORS_PROXY = 'https://cors-anywhere.herokuapp.com/';
+        const SHEETDB_API_URL = CORS_PROXY + 'https://sheetdb.io/api/v1/p7013b2mit62h';
         const SHEETDB_API_URL = 'https://sheetdb.io/api/v1/p7013b2mit62h'; // Replace with your SheetDB API URL
         
         // Variables to store data
@@ -586,10 +588,11 @@
         async function saveCurrentList() {
             try {
                 // First delete all current entries
-                await fetch(`${SHEETDB_API_URL}?sheet=CurrentWeek`, {
+                await fetch(`${SHEETDB_API_URL}all?sheet=CurrentWeek`, {
                     method: 'DELETE',
                     headers: {
-                        'Content-Type': 'application/json'
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
                     },
                     body: JSON.stringify({ condition: { '!=': '' } }) // Delete all non-empty rows
                 });
@@ -599,7 +602,8 @@
                     await fetch(`${SHEETDB_API_URL}?sheet=CurrentWeek`, {
                         method: 'POST',
                         headers: {
-                            'Content-Type': 'application/json'
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/json'
                         },
                         body: JSON.stringify({ 
                             data: currentList.map(player => ({ 
