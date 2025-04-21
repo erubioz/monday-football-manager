@@ -551,17 +551,43 @@
         async function fetchData() {
             showLoader(true);
             try {
-                // Fetch player history
-                const historyResponse = await fetch(`${SHEETDB_API_URL}?sheet=PlayerHistory`);
+                console.log('Attempting to fetch player history...');
+                
+                // Add CORS proxy if needed
+                const historyResponse = await fetch(`${SHEETDB_API_URL}?sheet=PlayerHistory`, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    }
+                });
+                
+                if (!historyResponse.ok) {
+                    throw new Error(`API responded with status: ${historyResponse.status}`);
+                }
+                
                 const historyData = await historyResponse.json();
+                console.log('Player history data:', historyData);
+                
                 playerHistory = historyData.map(player => ({
                     name: player.name,
                     gamesPlayed: parseInt(player.gamesPlayed) || 0
                 }));
                 
                 // Fetch current week's list
-                const currentResponse = await fetch(`${SHEETDB_API_URL}?sheet=CurrentWeek`);
-                const currentData = await currentResponse.json();
+                const currentResponse = await fetch(`${SHEETDB_API_URL}?sheet=CurrentWeek`, {
+                            method: 'GET',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Accept': 'application/json'
+                            }
+                        });
+                        
+                        if (!currentResponse.ok) {
+                            throw new Error(`API responded with status: ${currentResponse.status}`);
+                        }
+                        
+                        const currentData = await currentResponse.json();
                 
                 // Map player data from CurrentWeek sheet to include games played
                 currentList = currentData.map(entry => {
@@ -579,9 +605,9 @@
                 showLoader(false);
                 showMessage('Data loaded successfully');
             } catch (error) {
-                console.error('Error fetching data:', error);
+                console.error('Detailed error:', error);
                 showLoader(false);
-                showMessage('Error loading data. Please refresh the page.', 'error');
+                showMessage(`Error loading data: ${error.message}`, 'error');
             }
         }
         
