@@ -277,8 +277,8 @@
             border-radius: 4px;
             font-size: 16px;
         }
-        
-        /* Confirmation Dialog */
+
+        /* Confirmation dialog */
         .confirm-dialog {
             display: none;
             position: fixed;
@@ -291,7 +291,7 @@
             background-color: rgba(0,0,0,0.4);
         }
         
-        .confirm-dialog-content {
+        .confirm-content {
             background-color: white;
             margin: 15% auto;
             padding: 20px;
@@ -301,10 +301,10 @@
             text-align: center;
         }
         
-        .confirm-dialog-buttons {
+        .confirm-buttons {
             display: flex;
             justify-content: center;
-            gap: 10px;
+            gap: 20px;
             margin-top: 20px;
         }
         
@@ -326,11 +326,8 @@
                 margin-bottom: 10px;
             }
             
-            .modal-content {
-                width: 90%;
-            }
-            
-            .confirm-dialog-content {
+            .modal-content,
+            .confirm-content {
                 width: 90%;
             }
         }
@@ -416,14 +413,14 @@
             </div>
         </div>
     </div>
-    
+
     <!-- Confirmation Dialog -->
     <div id="confirmDialog" class="confirm-dialog">
-        <div class="confirm-dialog-content">
-            <p id="confirmMessage">Are you sure?</p>
-            <div class="confirm-dialog-buttons">
-                <button id="confirmNoBtn" class="warning">No</button>
+        <div class="confirm-content">
+            <p id="confirmMessage"></p>
+            <div class="confirm-buttons">
                 <button id="confirmYesBtn" class="success">Yes</button>
+                <button id="confirmNoBtn" class="warning">No</button>
             </div>
         </div>
     </div>
@@ -495,7 +492,8 @@
                 const removeBtn = playerItem.querySelector('.remove-player');
                 if (removeBtn) {
                     removeBtn.addEventListener('click', function() {
-                        showRemoveConfirmation(this.getAttribute('data-name'));
+                        const playerName = this.getAttribute('data-name');
+                        showConfirmDialog(`Are you sure you want to remove ${playerName} from the next game?`, playerName);
                     });
                 }
             });
@@ -577,17 +575,26 @@
             document.getElementById('confirmPasswordBtn').addEventListener('click', verifyPassword);
             
             // Confirmation dialog event listeners
-            document.getElementById('confirmNoBtn').addEventListener('click', closeConfirmDialog);
-            document.getElementById('confirmYesBtn').addEventListener('click', confirmRemovePlayer);
+            document.getElementById('confirmYesBtn').addEventListener('click', function() {
+                if (playerToRemove) {
+                    removePlayer(playerToRemove);
+                    playerToRemove = null;
+                }
+                closeConfirmDialog();
+            });
+            document.getElementById('confirmNoBtn').addEventListener('click', function() {
+                playerToRemove = null;
+                closeConfirmDialog();
+            });
             
-            // Close modals when clicking outside
+            // Close modal when clicking outside
             window.addEventListener('click', function(event) {
-                const passwordModal = document.getElementById('passwordModal');
-                const confirmDialog = document.getElementById('confirmDialog');
-                
-                if (event.target == passwordModal) {
+                const modal = document.getElementById('passwordModal');
+                if (event.target == modal) {
                     closeModal();
                 }
+                
+                const confirmDialog = document.getElementById('confirmDialog');
                 if (event.target == confirmDialog) {
                     closeConfirmDialog();
                 }
@@ -644,26 +651,12 @@
             }
         }
         
-        function showRemoveConfirmation(playerName) {
-            playerToRemove = playerName;
-            document.getElementById('confirmMessage').textContent = `Are you sure you want to remove ${playerName} from the next game?`;
-            document.getElementById('confirmDialog').style.display = 'block';
-        }
-        
-        function closeConfirmDialog() {
-            document.getElementById('confirmDialog').style.display = 'none';
-            playerToRemove = null;
-        }
-        
-        function confirmRemovePlayer() {
-            if (!playerToRemove) return;
-            
+        function removePlayer(playerName) {
             // Find the player's index in the current list
-            const playerIndex = currentList.findIndex(player => player.name === playerToRemove);
+            const playerIndex = currentList.findIndex(player => player.name === playerName);
             
             if (playerIndex === -1) {
                 showMessage('Player not found in the list', 'error');
-                closeConfirmDialog();
                 return;
             }
             
@@ -674,12 +667,10 @@
             updatePlayerLists();
             updatePlayerDropdown();
             
-            showMessage(`${playerToRemove} has been removed from the list`);
+            showMessage(`${playerName} has been removed from the list`);
             
             // Save to SheetDB
             saveCurrentList();
-            
-            closeConfirmDialog();
         }
         
         function resetCurrentList() {
@@ -688,57 +679,27 @@
             updatePlayerDropdown();
             showMessage('Player list has been reset');
             
-            // Delete all entries from CurrentWeek sheet in SheetDB
-            clearCurrentWeekSheet();
+            // Save empty list to SheetDB
+            saveCurrentList();
         }
         
-        async function clearCurrentWeekSheet() {
+        function confirmAttendance() {
             showLoader(true);
-            try {
-                console.log('Clearing CurrentWeek sheet...');
-                
-                // Delete all entries from CurrentWeek sheet
-                const response = await fetch(`${SHEETDB_API_URL}/sheet=CurrentWeek/all`, {
-                    method: 'DELETE',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Accept': 'application/json'
-                    }
-                });
-                
-                if (!response.ok) {
-                    throw new Error(`Failed to clear CurrentWeek sheet: ${response.status}`);
+            
+            // Get the main squad (who actually played)
+            const sortedList = sortPlayersByGames(currentList);
+            const playersWhoAttended = sortedList.slice(0, MAX_PLAYERS);
+            
+            // Increment games played for each player who attended
+            playersWhoAttended.forEach(attendee => {
+                const playerHistoryIndex = playerHistory.findIndex(p => p.name === attendee.name);
+                if (playerHistoryIndex !== -1) {
+                    playerHistory[playerHistoryIndex].gamesPlayed++;
                 }
-                
-                showLoader(false);
-                console.log('CurrentWeek sheet cleared successfully');
-            } catch (error) {
-                console.error('Error clearing CurrentWeek sheet:', error);
-                showLoader(false);
-                showMessage('Error clearing data: ' + error.message, 'error');
-            }
-        }
-        
-        async function confirmAttendance() {
-            showLoader(true);
-            try {
-                console.log('Confirming attendance...');
-                
-                // Get the main squad (who actually played)
-                const sortedList = sortPlayersByGames(currentList);
-                const playersWhoAttended = sortedList.slice(0, MAX_PLAYERS);
-                
-                // Increment games played for each player who attended
-                for (const attendee of playersWhoAttended) {
-                    const playerHistoryIndex = playerHistory.findIndex(p => p.name === attendee.name);
-                    if (playerHistoryIndex !== -1) {
-                        playerHistory[playerHistoryIndex].gamesPlayed++;
-                        
-                        // Update the player's record in SheetDB
-                        await updatePlayerGamesPlayed(playerHistory[playerHistoryIndex]);
-                    }
-                }
-                
+            });
+            
+            // Save updated player history to SheetDB
+            savePlayerHistory().then(() => {
                 // Reset current list
                 currentList = [];
                 
@@ -746,44 +707,12 @@
                 updatePlayerLists();
                 updatePlayerDropdown();
                 
-                // Clear CurrentWeek sheet
-                await clearCurrentWeekSheet();
-                
-                showLoader(false);
-                showMessage('Attendance confirmed and player stats updated');
-            } catch (error) {
-                console.error('Error confirming attendance:', error);
-                showLoader(false);
-                showMessage('Error confirming attendance: ' + error.message, 'error');
-            }
-        }
-        
-        async function updatePlayerGamesPlayed(player) {
-            try {
-                // Update the player's record in PlayerHistory sheet
-                const response = await fetch(`${SHEETDB_API_URL}/sheet=PlayerHistory/name/${encodeURIComponent(player.name)}`, {
-                    method: 'PATCH',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Accept': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        data: {
-                            gamesPlayed: player.gamesPlayed
-                        }
-                    })
+                // Clear the CurrentWeek sheet
+                saveCurrentList().then(() => {
+                    showLoader(false);
+                    showMessage('Attendance confirmed and player stats updated');
                 });
-                
-                if (!response.ok) {
-                    throw new Error(`Failed to update player games played: ${response.status}`);
-                }
-                
-                console.log(`Updated games played for ${player.name} to ${player.gamesPlayed}`);
-                return true;
-            } catch (error) {
-                console.error(`Error updating games played for ${player.name}:`, error);
-                return false;
-            }
+            });
         }
         
         function showAddNewPlayerDialog() {
@@ -839,6 +768,17 @@
         
         function closeModal() {
             document.getElementById('passwordModal').style.display = 'none';
+        }
+        
+        // Confirmation Dialog Functions
+        function showConfirmDialog(message, playerName) {
+            document.getElementById('confirmMessage').textContent = message;
+            playerToRemove = playerName;
+            document.getElementById('confirmDialog').style.display = 'block';
+        }
+        
+        function closeConfirmDialog() {
+            document.getElementById('confirmDialog').style.display = 'none';
         }
         
         function verifyPassword() {
@@ -942,8 +882,89 @@
                 console.log('Saving current list...');
                 
                 // First delete all current entries
-                await clearCurrentWeekSheet();
+                await fetch(`${SHEETDB_API_URL}/all?sheet=CurrentWeek`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    }
+                });
                 
                 // Then add the current list
                 if (currentList.length > 0) {
-                    const response = await fetch(`${SHEETDB_API
+                    const response = await fetch(`${SHEETDB_API_URL}?sheet=CurrentWeek`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/json'
+                        },
+                        body: JSON.stringify({ 
+                            data: currentList.map(player => ({ 
+                                name: player.name
+                            }))
+                        })
+                    });
+                    
+                    if (!response.ok) {
+                        throw new Error(`Failed to save current list: ${response.status}`);
+                    }
+                }
+                
+                showLoader(false);
+                return true;
+            } catch (error) {
+                console.error('Error saving current list:', error);
+                showLoader(false);
+                showMessage('Error saving data: ' + error.message, 'error');
+                return false;
+            }
+        }
+        
+        async function savePlayerHistory() {
+            showLoader(true);
+            try {
+                console.log('Saving player history...');
+                
+                // Delete all existing entries first
+                await fetch(`${SHEETDB_API_URL}/all?sheet=PlayerHistory`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    }
+                });
+                
+                // Then add all player history records
+                const response = await fetch(`${SHEETDB_API_URL}?sheet=PlayerHistory`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({ 
+                        data: playerHistory.map(player => ({ 
+                            name: player.name,
+                            gamesPlayed: player.gamesPlayed
+                        }))
+                    })
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`Failed to save player history: ${response.status}`);
+                }
+                
+                showLoader(false);
+                return true;
+            } catch (error) {
+                console.error('Error saving player history:', error);
+                showLoader(false);
+                showMessage('Error saving player statistics: ' + error.message, 'error');
+                return false;
+            }
+        }
+        
+        // Initialize the app when the DOM is loaded
+        document.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html>
