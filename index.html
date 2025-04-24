@@ -633,21 +633,62 @@
             // Add player to the current list
             const player = findPlayerByName(selectedName);
             if (player) {
-                currentList.push({...player}); // Create a copy of the player object
+                // Show loader during API call
+                showLoader(true);
                 
-                // Update the UI
-                updatePlayerLists();
-                updatePlayerDropdown();
-                
-                // Reset dropdown selection
-                dropdown.value = '';
-                
-                showMessage(`${selectedName} has been added to the list`);
-                
-                // Save to SheetDB
-                saveCurrentList();
+                // Add single player to the sheet first
+                addSinglePlayerToSheet(selectedName)
+                    .then(success => {
+                        if (success) {
+                            // Then update the local list
+                            currentList.push({...player}); // Create a copy of the player object
+                            
+                            // Update the UI
+                            updatePlayerLists();
+                            updatePlayerDropdown();
+                            
+                            // Reset dropdown selection
+                            dropdown.value = '';
+                            
+                            showMessage(`${selectedName} has been added to the list`);
+                        } else {
+                            showMessage('Failed to register player', 'error');
+                        }
+                        showLoader(false);
+                    })
+                    .catch(error => {
+                        console.error('Error registering player:', error);
+                        showMessage('Error registering player: ' + error.message, 'error');
+                        showLoader(false);
+                    });
             } else {
                 showMessage('Player not found', 'error');
+            }
+        }
+        
+        // New function to add a single player to the sheet
+        async function addSinglePlayerToSheet(playerName) {
+            try {
+                // Add the player to the first empty cell in column A starting from A2
+                const response = await fetch(`${SHEETDB_API_URL}?sheet=CurrentWeek`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({ 
+                        data: { name: playerName }
+                    })
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`Failed to add player: ${response.status}`);
+                }
+                
+                return true;
+            } catch (error) {
+                console.error('Error adding player to sheet:', error);
+                return false;
             }
         }
         
