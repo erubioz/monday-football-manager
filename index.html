@@ -615,6 +615,7 @@
         }
         
         // Event handlers
+        // Modified registerPlayer function to prevent duplicates
         function registerPlayer() {
             const dropdown = document.getElementById('playerSelect');
             const selectedName = dropdown.value;
@@ -624,45 +625,85 @@
                 return;
             }
             
-            // Check if player is already in the list
+            // Check if player is already in the local list
             if (currentList.some(player => player.name === selectedName)) {
                 showMessage(`Player ${selectedName} is already registered for the next game`, 'error');
                 return;
             }
             
-            // Add player to the current list
-            const player = findPlayerByName(selectedName);
-            if (player) {
-                // Show loader during API call
-                showLoader(true);
+            // Show loader during API call
+            showLoader(true);
+            
+            // First check if player already exists in the sheet
+            checkPlayerExistsInSheet(selectedName)
+                .then(exists => {
+                    if (exists) {
+                        showMessage(`Player ${selectedName} is already registered in the database`, 'error');
+                        showLoader(false);
+                        return;
+                    }
+                    
+                    // Add player to the current list if not already in sheet
+                    const player = findPlayerByName(selectedName);
+                    if (player) {
+                        // Add single player to the sheet first
+                        addSinglePlayerToSheet(selectedName)
+                            .then(success => {
+                                if (success) {
+                                    // Then update the local list
+                                    currentList.push({...player}); // Create a copy of the player object
+                                    
+                                    // Update the UI
+                                    updatePlayerLists();
+                                    updatePlayerDropdown();
+                                    
+                                    // Reset dropdown selection
+                                    dropdown.value = '';
+                                    
+                                    showMessage(`${selectedName} has been added to the list`);
+                                } else {
+                                    showMessage('Failed to register player', 'error');
+                                }
+                                showLoader(false);
+                            })
+                            .catch(error => {
+                                console.error('Error registering player:', error);
+                                showMessage('Error registering player: ' + error.message, 'error');
+                                showLoader(false);
+                            });
+                    } else {
+                        showMessage('Player not found', 'error');
+                        showLoader(false);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error checking player existence:', error);
+                    showMessage('Error checking player: ' + error.message, 'error');
+                    showLoader(false);
+                });
+        }
+
+        // New function to check if player already exists in the CurrentWeek sheet
+        async function checkPlayerExistsInSheet(playerName) {
+            try {
+                const response = await fetch(`${SHEETDB_API_URL}?sheet=CurrentWeek`, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    }
+                });
                 
-                // Add single player to the sheet first
-                addSinglePlayerToSheet(selectedName)
-                    .then(success => {
-                        if (success) {
-                            // Then update the local list
-                            currentList.push({...player}); // Create a copy of the player object
-                            
-                            // Update the UI
-                            updatePlayerLists();
-                            updatePlayerDropdown();
-                            
-                            // Reset dropdown selection
-                            dropdown.value = '';
-                            
-                            showMessage(`${selectedName} has been added to the list`);
-                        } else {
-                            showMessage('Failed to register player', 'error');
-                        }
-                        showLoader(false);
-                    })
-                    .catch(error => {
-                        console.error('Error registering player:', error);
-                        showMessage('Error registering player: ' + error.message, 'error');
-                        showLoader(false);
-                    });
-            } else {
-                showMessage('Player not found', 'error');
+                if (!response.ok) {
+                    throw new Error(`Failed to check player: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                // Check if player already exists in the sheet
+                return data.some(entry => entry.name === playerName);
+            } catch (error) {
+                console.error('Error checking player in sheet:', error);
+                return false; // Assume player doesn't exist if there's an error
             }
         }
         
@@ -724,6 +765,7 @@
             saveCurrentList();
         }
         
+        // Modified confirmAttendance function to properly sort playerHistory
         function confirmAttendance() {
             showLoader(true);
             
@@ -738,6 +780,9 @@
                     playerHistory[playerHistoryIndex].gamesPlayed++;
                 }
             });
+            
+            // Sort playerHistory by games played after updating
+            playerHistory = sortPlayersByGames(playerHistory);
             
             // Save updated player history to SheetDB
             savePlayerHistory().then(() => {
@@ -849,6 +894,7 @@
         }
         
         // SheetDB API functions
+        // Enhanced fetchData function to ensure proper sorting
         async function fetchData() {
             showLoader(true);
             try {
@@ -875,6 +921,9 @@
                     gamesPlayed: parseInt(player.gamesPlayed) || 0
                 }));
                 
+                // Sort player history by games played
+                playerHistory = sortPlayersByGames(playerHistory);
+                
                 // Fetch current week's list
                 const currentResponse = await fetch(`${SHEETDB_API_URL}?sheet=CurrentWeek`, {
                     method: 'GET',
@@ -891,8 +940,18 @@
                 const currentData = await currentResponse.json();
                 
                 // Map player data from CurrentWeek sheet to include games played
+                // and filter out empty or duplicate entries
+                const playerNames = new Set();
                 currentList = currentData
                     .filter(entry => entry.name) // Filter out empty entries
+                    .filter(entry => {
+                        // Filter out duplicates
+                        if (playerNames.has(entry.name)) {
+                            return false;
+                        }
+                        playerNames.add(entry.name);
+                        return true;
+                    })
                     .map(entry => {
                         const player = findPlayerByName(entry.name);
                         return {
@@ -900,9 +959,6 @@
                             gamesPlayed: player ? player.gamesPlayed : 0
                         };
                     });
-                
-                // Remove duplicates from currentList (if any)
-                currentList = Array.from(new Map(currentList.map(item => [item.name, item])).values());
                 
                 // Update UI
                 updatePlayerLists();
@@ -961,10 +1017,14 @@
             }
         }
         
+        // Modified savePlayerHistory to ensure proper sorting
         async function savePlayerHistory() {
             showLoader(true);
             try {
                 console.log('Saving player history...');
+                
+                // Sort playerHistory by games played before saving
+                playerHistory = sortPlayersByGames(playerHistory);
                 
                 // Delete all existing entries first
                 await fetch(`${SHEETDB_API_URL}/all?sheet=PlayerHistory`, {
