@@ -429,7 +429,8 @@
         // Configuration
         const MAX_PLAYERS = 15;
         const ADMIN_PASSWORD = "CristianoMessi";
-        const SHEETDB_API_URL = 'https://sheetdb.io/api/v1/p7013b2mit62h'; // Your SheetDB API URL
+        //const SHEETDB_API_URL = 'https://sheetdb.io/api/v1/p7013b2mit62h'; // Your SheetDB API URL
+        const API_URL = 'https://script.google.com/macros/s/AKfycby7KKBD410QKB9_mN-81dencdMsvVPnF0n3ugwa_IFLcS99UZLi0bM5wbWP3oOFZbU_oA/exec';
         
         // Variables to store data
         let playerHistory = [];
@@ -683,15 +684,18 @@
                 });
         }
 
-        // New function to check if player already exists in the CurrentWeek sheet
+        // Modified function to check if player already exists in the CurrentWeek sheet (after Google Apps Script implementation)
         async function checkPlayerExistsInSheet(playerName) {
             try {
-                const response = await fetch(`${SHEETDB_API_URL}?sheet=CurrentWeek`, {
-                    method: 'GET',
+                const response = await fetch(API_URL, {
+                    method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'Accept': 'application/json'
-                    }
+                    },
+                    body: JSON.stringify({
+                        method: 'GET',
+                        sheet: 'CurrentWeek'
+                    })
                 });
                 
                 if (!response.ok) {
@@ -707,17 +711,17 @@
             }
         }
         
-        // New function to add a single player to the sheet
+        // New function to add a single player to the sheet ((after Google Apps Script implementation))
         async function addSinglePlayerToSheet(playerName) {
             try {
-                // Add the player to the first empty cell in column A starting from A2
-                const response = await fetch(`${SHEETDB_API_URL}?sheet=CurrentWeek`, {
+                const response = await fetch(API_URL, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'Accept': 'application/json'
                     },
-                    body: JSON.stringify({ 
+                    body: JSON.stringify({
+                        method: 'POST',
+                        sheet: 'CurrentWeek',
                         data: { name: playerName }
                     })
                 });
@@ -894,19 +898,22 @@
         }
         
         // SheetDB API functions
-        // Enhanced fetchData function to ensure proper sorting
+        // Enhanced fetchData function to ensure proper sorting (after Google Apps Script implementation)
         async function fetchData() {
             showLoader(true);
             try {
                 console.log('Attempting to fetch player history...');
                 
                 // Fetch player history
-                const historyResponse = await fetch(`${SHEETDB_API_URL}?sheet=PlayerHistory`, {
-                    method: 'GET',
+                const historyResponse = await fetch(API_URL, {
+                    method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'Accept': 'application/json'
-                    }
+                    },
+                    body: JSON.stringify({
+                        method: 'GET',
+                        sheet: 'PlayerHistory'
+                    })
                 });
                 
                 if (!historyResponse.ok) {
@@ -925,12 +932,15 @@
                 playerHistory = sortPlayersByGames(playerHistory);
                 
                 // Fetch current week's list
-                const currentResponse = await fetch(`${SHEETDB_API_URL}?sheet=CurrentWeek`, {
-                    method: 'GET',
+                const currentResponse = await fetch(API_URL, {
+                    method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'Accept': 'application/json'
-                    }
+                    },
+                    body: JSON.stringify({
+                        method: 'GET',
+                        sheet: 'CurrentWeek'
+                    })
                 });
                 
                 if (!currentResponse.ok) {
@@ -979,26 +989,29 @@
                 console.log('Saving current list...');
                 
                 // First delete all current entries
-                await fetch(`${SHEETDB_API_URL}/all?sheet=CurrentWeek`, {
-                    method: 'DELETE',
+                await fetch(API_URL, {
+                    method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'Accept': 'application/json'
-                    }
+                    },
+                    body: JSON.stringify({
+                        method: 'DELETE',
+                        sheet: 'CurrentWeek',
+                        id: 'all'
+                    })
                 });
                 
                 // Then add the current list
                 if (currentList.length > 0) {
-                    const response = await fetch(`${SHEETDB_API_URL}?sheet=CurrentWeek`, {
+                    const response = await fetch(API_URL, {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
-                            'Accept': 'application/json'
                         },
-                        body: JSON.stringify({ 
-                            data: currentList.map(player => ({ 
-                                name: player.name
-                            }))
+                        body: JSON.stringify({
+                            method: 'POST',
+                            sheet: 'CurrentWeek',
+                            data: currentList.map(player => ({ name: player.name }))
                         })
                     });
                     
@@ -1017,7 +1030,7 @@
             }
         }
         
-        // Modified savePlayerHistory to ensure proper sorting
+        // Modified savePlayerHistory to ensure proper sorting (after Google Apps Script implementation)
         async function savePlayerHistory() {
             showLoader(true);
             try {
@@ -1027,22 +1040,27 @@
                 playerHistory = sortPlayersByGames(playerHistory);
                 
                 // Delete all existing entries first
-                await fetch(`${SHEETDB_API_URL}/all?sheet=PlayerHistory`, {
-                    method: 'DELETE',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Accept': 'application/json'
-                    }
-                });
-                
-                // Then add all player history records
-                const response = await fetch(`${SHEETDB_API_URL}?sheet=PlayerHistory`, {
+                await fetch(API_URL, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'Accept': 'application/json'
                     },
-                    body: JSON.stringify({ 
+                    body: JSON.stringify({
+                        method: 'DELETE',
+                        sheet: 'PlayerHistory',
+                        id: 'all'
+                    })
+                });
+                
+                // Then add all player history records
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        method: 'POST',
+                        sheet: 'PlayerHistory',
                         data: playerHistory.map(player => ({ 
                             name: player.name,
                             gamesPlayed: player.gamesPlayed
